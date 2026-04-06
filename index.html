@@ -3,101 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギター指板お絵描きツール</title>
+    <title>ギター指板エディター Pro</title>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .controls { margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .fretboard-container { overflow-x: auto; max-width: 100%; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
+        .controls { margin: 10px 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; width: 95%; }
+        .fretboard-container { overflow-x: auto; width: 98%; background: #fff; padding: 40px 10px 20px 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #ccc; }
         
         .fretboard {
             display: grid;
-            grid-template-rows: repeat(6, 30px);
+            grid-template-rows: repeat(6, 35px); /* 6弦分 */
             border-right: 2px solid #333;
-            position: relative;
-            margin-top: 20px;
+            min-width: 1500px; /* 24フレット分を確保 */
         }
 
-        .string {
-            display: flex;
-            border-bottom: 1px solid #999;
-            position: relative;
-        }
+        .string { display: flex; border-bottom: 1px solid #999; position: relative; }
+        .string:last-child { border-bottom: none; }
 
         .fret {
-            width: 60px;
-            height: 30px;
-            border-left: 3px solid #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            user-select: none;
+            width: 60px; height: 35px; border-left: 2px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; cursor: pointer;
         }
 
-        /* ナット（0フレット） */
-        .fret:first-child { border-left-width: 8px; width: 40px; }
+        /* 0フレット（ナット） */
+        .fret:first-child { border-left-width: 10px; width: 50px; background: #f9f9f9; }
+
+        /* フレット番号 */
+        .fret-number {
+            position: absolute; top: -30px; font-size: 13px; font-weight: bold;
+            color: #444; width: 100%; text-align: center;
+        }
+
+        /* ポジションマーク用（ドット） */
+        .dot-marker {
+            position: absolute; bottom: -55px; width: 100%; text-align: center;
+            font-size: 18px; color: #bbb; pointer-events: none;
+        }
 
         .note {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-            z-index: 2;
-            transition: transform 0.1s;
+            width: 26px; height: 26px; display: flex; align-items: center;
+            justify-content: center; font-size: 11px; font-weight: bold;
+            z-index: 2; border: 2px solid transparent; box-sizing: border-box;
         }
 
-        /* 記号の種類 */
-        .note.type-0 { background: #e74c3c; border-radius: 50%; } /* Root - Circle */
-        .note.type-1 { background: #3498db; border-radius: 4px; }  /* Square */
-        .note.type-2 { 
-            background: #2ecc71; 
+        /* --- マークの種類 --- */
+        .note.type-0 { background: #e74c3c; color: white; border-radius: 50%; } /* 赤丸(Root) */
+        .note.type-1 { background: #3498db; color: white; border-radius: 50%; } /* 青丸 */
+        .note.type-2 { background: white; color: #333; border: 2px solid #333; border-radius: 50%; } /* 塗りなし丸 */
+        .note.type-3 { background: #2ecc71; color: white; border-radius: 4px; }  /* 緑四角 */
+        .note.type-4 { 
+            background: #f1c40f; color: #333; 
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%); 
-            width: 28px; height: 28px; padding-top: 4px;
-        } /* Triangle */
+            width: 30px; height: 30px; padding-top: 5px;
+        } /* 黄三角 */
 
-        .fret-number {
-            position: absolute;
-            top: -25px;
-            font-size: 12px;
-            color: #666;
-            width: 100%;
-            text-align: center;
-        }
-
-        .legend { margin-top: 20px; font-size: 14px; color: #555; }
+        button { padding: 8px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: #fff; }
+        button:hover { background: #eee; }
+        .hint { font-size: 12px; color: #666; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h2>🎸 Guitar Fretboard Painter</h2>
+    <h3>🎸 Guitar Fretboard Pro (24 Frets)</h3>
 
     <div class="controls">
         <button onclick="clearBoard()">全消去</button>
-        <span> | クリック：マーク作成/形状変更 | 右クリック：文字入れ</span>
+        <div class="hint">クリック：マーク切替 (赤●→青●→白○→緑■→黄▲→消去)<br>右クリック/長押し：文字入力</div>
     </div>
 
     <div class="fretboard-container">
         <div id="fretboard" class="fretboard"></div>
     </div>
 
-    <div class="legend">
-        ●: ルート(R) / ■: 完全度数 / ▲: 3度・7度など
-    </div>
-
     <script>
         const strings = 6;
-        const frets = 15;
+        const frets = 25; // 0〜24フレット
         const board = document.getElementById('fretboard');
 
-        // 指板の生成
         function createBoard() {
-            board.style.gridTemplateRows = `repeat(, 35px)`;
             for (let s = 0; s < strings; s++) {
                 const stringEl = document.createElement('div');
                 stringEl.className = 'string';
@@ -106,25 +89,29 @@
                     const fretEl = document.createElement('div');
                     fretEl.className = 'fret';
                     
-                    // フレット番号表示
+                    // フレット番号とドットマーカー
                     if (s === 0) {
                         const num = document.createElement('div');
                         num.className = 'fret-number';
                         num.innerText = f;
                         fretEl.appendChild(num);
+
+                        // ギターの一般的なドット位置（3,5,7,9,12,15,17,19,21,24）
+                        const dots = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
+                        if (dots.includes(f)) {
+                            const dot = document.createElement('div');
+                            dot.className = 'dot-marker';
+                            dot.innerText = (f === 12 || f === 24) ? "●●" : "●";
+                            fretEl.appendChild(dot);
+                        }
                     }
 
-                    // 左クリックイベント
-                    fretEl.addEventListener('click', (e) => {
-                        toggleNote(fretEl);
-                    });
-
-                    // 右クリックイベント（度数入力）
+                    fretEl.addEventListener('click', () => toggleNote(fretEl));
                     fretEl.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
                         const note = fretEl.querySelector('.note');
                         if (note) {
-                            const label = prompt("度数や指番号を入力 (例: R, 3, m7):", note.innerText);
+                            const label = prompt("度数や指番号を入力:", note.innerText);
                             if (label !== null) note.innerText = label;
                         }
                     });
@@ -138,27 +125,26 @@
         function toggleNote(fretEl) {
             let note = fretEl.querySelector('.note');
             if (!note) {
-                // 新規作成
                 note = document.createElement('div');
                 note.className = 'note type-0';
                 note.dataset.type = "0";
                 fretEl.appendChild(note);
             } else {
-                // 形状変更
                 let type = parseInt(note.dataset.type);
-                if (type < 2) {
+                if (type < 4) { // 5種類 (0,1,2,3,4)
                     type++;
-                    note.className = `note type-`;
+                    note.className = `note type-${type}`;
                     note.dataset.type = type;
+                    // 三角形(type4)の時だけ位置微調整
+                    note.style.paddingTop = (type === 4) ? "5px" : "0";
                 } else {
-                    // 削除
                     note.remove();
                 }
             }
         }
 
         function clearBoard() {
-            if (confirm("すべてのマークを消去しますか？")) {
+            if (confirm("すべて消去しますか？")) {
                 document.querySelectorAll('.note').forEach(n => n.remove());
             }
         }
