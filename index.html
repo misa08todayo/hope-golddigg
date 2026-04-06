@@ -3,17 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギター指板エディター Pro (修正版)</title>
+    <title>ギター指板エディター Pro (Final)</title>
     <style>
         body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
-        .controls { margin: 10px 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; width: 95%; max-width: 600px; z-index: 10; }
-        .fretboard-container { overflow-x: auto; width: 98%; background: #fdfdfd; padding: 50px 0 30px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #ccc; position: relative; }
+        .controls { margin: 10px 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; width: 95%; max-width: 600px; z-index: 20; }
+        
+        .fretboard-wrapper {
+            display: flex; /* サイドフレットと指板を並べる */
+            align-items: flex-start;
+            overflow-x: auto; /* 横スクロール全体をカバー */
+            width: 98%;
+            position: relative;
+        }
+
+        /* --- サイドのフレット番号（New） --- */
+        .side-fret-numbers {
+            display: flex; flex-direction: column;
+            width: 30px; /* 横幅 */
+            margin-top: 50px; /* 指板の上部空白に合わせる */
+            font-size: 11px; font-weight: bold; color: #777;
+            user-select: none;
+        }
+        .side-fret { height: 35px; /* 弦の高さに合わせる */ display: flex; align-items: center; justify-content: center; }
+
+        .fretboard-container { 
+            background: #fdfdfd; padding: 50px 0 30px 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #ccc; position: relative;
+            flex-grow: 1; /* 残りの幅をすべて使用 */
+        }
         
         .fretboard {
             display: grid;
             grid-template-rows: repeat(6, 35px); /* 6弦分 */
-            border-right: 2px solid #333;
-            min-width: 1540px; /* 24フレット分。計算を見直し少し広く */
+            min-width: 1540px; /* 24フレット分。1フレット=約62pxで計算 */
             position: relative;
         }
 
@@ -21,8 +42,7 @@
         .string:last-child { border-bottom: none; }
 
         .fret {
-            /* 最後のフレットが潰れないよう、min-widthを指定。
-               幅を少し広げ(60->62px)マークのズレを吸収 */
+            /* 最後のフレットが潰れないよう、min-widthを指定。 */
             min-width: 62px; height: 35px; border-left: 2px solid #333;
             display: flex; align-items: center; justify-content: center;
             position: relative; cursor: pointer;
@@ -35,10 +55,11 @@
         /* 0フレット（ナット） */
         .fret:first-child { border-left-width: 12px; min-width: 50px; background: #eee; }
 
-        /* フレット番号 */
+        /* --- 上部のフレット番号 --- */
         .fret-number {
             position: absolute; top: -35px; font-size: 14px; font-weight: bold;
             color: #333; width: 100%; text-align: center; left: 0;
+            user-select: none;
         }
 
         /* --- ポジションマーク（中央配置） --- */
@@ -56,7 +77,7 @@
         .note {
             width: 28px; height: 28px; display: flex; align-items: center;
             justify-content: center; font-size: 12px; font-weight: bold;
-            z-index: 3; border: 2px solid transparent; box-sizing: border-box;
+            z-index: 10; border: 2px solid transparent; box-sizing: border-box;
             position: relative; /* 中央配置の微調整用 */
         }
 
@@ -78,54 +99,79 @@
 </head>
 <body>
 
-    <h3>🎸 Guitar Fretboard Pro (Fixed)</h3>
+    <h3>🎸 Guitar Fretboard Pro (Final)</h3>
 
     <div class="controls">
         <button onclick="clearBoard()">全消去</button>
         <div class="hint">クリック：マーク切替<br>(赤●→青●→白○→緑■→黄▲→消去)<br>右クリック/長押し：文字入力</div>
     </div>
 
-    <div class="fretboard-container">
-        <div id="fretboard" class="fretboard"></div>
+    <div class="fretboard-wrapper">
+        <div id="side-fret-numbers" class="side-fret-numbers"></div>
+
+        <div class="fretboard-container">
+            <div id="fretboard" class="fretboard"></div>
+        </div>
     </div>
 
     <script>
         const strings = 6;
         const frets = 25; // 0〜24フレット
         const board = document.getElementById('fretboard');
+        const sideFretsBoard = document.getElementById('side-fret-numbers');
 
         function createBoard() {
-            // フレットごとの処理
+            // サイドのフレット数を生成（0F〜24F）
+            for (let f = 0; f < frets; f++) {
+                const sideFret = document.createElement('div');
+                sideFret.className = 'side-fret';
+                // 0フレット(ナット)は表示を調整
+                if(f === 0) {
+                    sideFret.innerText = "Nut";
+                    sideFret.style.fontSize = "9px";
+                } else {
+                    sideFret.innerText = `${f}F`;
+                }
+                sideFretsBoard.appendChild(sideFret);
+            }
+
+            // フレットごとの処理（上部フレット番号とポジションマーク）
             for (let f = 0; f < frets; f++) {
                 
-                // フレット番号の追加（最上部に一度だけ）
-                if (true) {
-                    const num = document.createElement('div');
-                    num.className = 'fret-number';
-                    num.innerText = f;
-                    // 0フレット(ナット)は番号を非表示にするか、位置を調整する
-                    if(f === 0) num.style.opacity = "0"; 
+                // 上部のフレット番号
+                const num = document.createElement('div');
+                num.className = 'fret-number';
+                num.innerText = f;
+                if(f === 0) num.style.opacity = "0"; // 0Fは非表示
+
+                // ポジションマークの追加
+                const dots = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
+                if (dots.includes(f)) {
+                    const container = document.createElement('div');
+                    container.className = 'dot-marker-container';
                     
-                    // ポジションマークの追加
-                    const dots = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
-                    if (dots.includes(f)) {
-                        const container = document.createElement('div');
-                        container.className = 'dot-marker-container';
-                        container.style.left = `${ (f===0? 50 : 62) * f }px`; // 簡易的な位置計算
+                    // 正確な位置計算：ナット(50px) + フレット幅(62px)*(f-1) + フレット幅/2
+                    const fretWidth = 62;
+                    const nutWidth = 50;
+                    let leftPos = nutWidth + fretWidth * (f - 1) + fretWidth / 2;
+                    if(f === 0) leftPos = nutWidth / 2; // 理論上はここだが、f=0はdotsに含まれない
+                    
+                    container.style.left = `${leftPos}px`;
 
-                        const dot1 = document.createElement('div');
-                        dot1.className = 'dot-marker';
-                        container.appendChild(dot1);
+                    const dot1 = document.createElement('div');
+                    dot1.className = 'dot-marker';
+                    container.appendChild(dot1);
 
-                        // 12Fと24Fはダブルドット
-                        if (f === 12 || f === 24) {
-                            const dot2 = document.createElement('div');
-                            dot2.className = 'dot-marker';
-                            container.appendChild(dot2);
-                        }
-                        // ポジションマークは指板全体に対して配置
-                        board.appendChild(container);
+                    // 12Fと24Fはダブルドット
+                    if (f === 12 || f === 24) {
+                        const dot2 = document.createElement('div');
+                        dot2.className = 'dot-marker';
+                        container.appendChild(dot2);
                     }
+                    // ポジションマークは指板全体に対して配置
+                    board.appendChild(container);
+                    // フレット番号もここに
+                    container.appendChild(num);
                 }
             }
 
@@ -137,8 +183,6 @@
                 for (let f = 0; f < frets; f++) {
                     const fretEl = document.createElement('div');
                     fretEl.className = 'fret';
-                    
-                    // --- ここにフレット番号を配置するとズレるので削除 ---
                     
                     fretEl.addEventListener('click', () => toggleNote(fretEl));
                     fretEl.addEventListener('contextmenu', (e) => {
