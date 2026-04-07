@@ -3,45 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theory Presenter - Guitar & Piano</title>
+    <title>Theory Presenter - Full Integration</title>
     <style>
-        :root { --bg: #f8f9fa; --accent: #3498db; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        :root { --bg: #f8f9fa; --accent: #3498db; --fret-w: 62px; --str-h: 40px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; }
         
         /* ツールバー */
         .toolbar { position: sticky; top: 0; background: white; width: 100%; display: flex; justify-content: center; gap: 10px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; flex-wrap: wrap; }
         .palette { display: flex; gap: 5px; background: #eee; padding: 5px; border-radius: 5px; }
-        .btn { padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background: white; font-weight: bold; transition: 0.2s; }
-        .btn:hover { background: #f0f0f0; }
+        .btn { padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background: white; font-weight: bold; }
         .btn.active { background: var(--accent); color: white; border-color: var(--accent); }
         
-        /* キャンバス（手書きレイヤー） */
-        .fretboard-outer { position: relative; margin: 40px 20px; user-select: none; }
-        #drawing-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
+        /* 全体コンテナ */
+        .main-wrapper { display: flex; margin: 40px 20px; position: relative; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; max-width: 95vw; }
+
+        /* サイドフレット番号 */
+        .side-guide { display: flex; flex-direction: column; width: 40px; margin-top: 40px; }
+        .side-label { height: var(--str-h); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #888; border-bottom: 1px solid transparent; }
+
+        .fretboard-area { position: relative; padding-top: 40px; }
+
+        /* 指板本体 */
+        .fretboard { display: grid; grid-template-rows: repeat(6, var(--str-h)); border-right: 2px solid #333; position: relative; min-width: 1540px; z-index: 5; }
+        .string { display: flex; border-bottom: 1px solid #ddd; position: relative; }
+        .string:last-child { border-bottom: none; }
+        .fret { min-width: var(--fret-w); height: var(--str-h); border-left: 2px solid #333; display: flex; align-items: center; justify-content: center; position: relative; box-sizing: border-box; }
+        .fret:first-child { border-left-width: 12px; min-width: 50px; background: #f0f0f0; }
+
+        /* 上部フレット番号 */
+        .fret-num-top { position: absolute; top: -30px; width: 100%; text-align: center; font-weight: bold; color: #555; font-size: 14px; }
+
+        /* ポジションマーク(ドット) */
+        .dot { position: absolute; width: 16px; height: 16px; background: #e0e0e0; border-radius: 50%; z-index: 1; pointer-events: none; transform: translateY(20px); }
+
+        /* 手書きキャンバス */
+        #drawing-canvas { position: absolute; top: 40px; left: 0; z-index: 50; pointer-events: none; }
         #drawing-canvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* 指板 */
-        .fretboard { display: grid; grid-template-rows: repeat(6, 40px); background: #fff; border-right: 2px solid #333; position: relative; min-width: 1540px; }
-        .string { display: flex; border-bottom: 1px solid #ddd; position: relative; }
-        .fret { min-width: 62px; height: 40px; border-left: 2px solid #333; display: flex; align-items: center; justify-content: center; position: relative; }
-        .fret:first-child { border-left-width: 12px; min-width: 50px; background: #f0f0f0; }
-        
         /* マーク */
-        .note { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 10; position: relative; }
+        .note { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 10; }
         .note-R { background: #e74c3c; } .note-3 { background: #f1c40f; color: #333; }
         .note-5 { background: #3498db; } .note-7 { background: #9b59b6; }
-        .note-T { background: #7f8c8d; } /* Tension/Other */
-        
-        /* オクターブハイライト */
-        .fret.highlight::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.2); z-index: 1; }
+        .note-T { background: #7f8c8d; }
+
+        .fret.highlight::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.2); z-index: 2; }
 
         /* ピアノ */
-        .piano { display: flex; margin: 20px; padding-bottom: 50px; }
-        .white-key { width: 40px; height: 150px; border: 1px solid #ccc; background: white; box-sizing: border-box; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-size: 12px; }
-        .black-key { width: 24px; height: 90px; background: #333; margin-left: -12px; margin-right: -12px; z-index: 2; cursor: pointer; }
-        .key-active { background: #3498db !important; color: white; }
-
-        .hint { font-size: 12px; color: #666; margin: 5px; }
+        .piano { display: flex; margin: 20px; padding-bottom: 50px; overflow-x: auto; max-width: 95vw; }
+        .white-key { width: 40px; height: 150px; border: 1px solid #ccc; background: white; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-size: 12px; flex-shrink: 0; }
+        .black-key { width: 26px; height: 95px; background: #333; margin-left: -13px; margin-right: -13px; z-index: 2; cursor: pointer; flex-shrink: 0; }
+        .key-active { background: var(--accent) !important; color: white; }
     </style>
 </head>
 <body>
@@ -53,17 +64,17 @@
         <button class="btn" data-type="5">5</button>
         <button class="btn" data-type="7">7</button>
         <button class="btn" data-type="T">T</button>
-        <button class="btn" id="eraser-mode">Eraser</button>
     </div>
     <button class="btn" id="pencil-mode">✏️ Pen</button>
-    <button class="btn" id="snapshot-btn">📸 Snapshot</button>
     <button class="btn" onclick="clearAll()">Clear All</button>
-    <div class="hint">Keys: [1,3,5,7,T] to Switch Palette | Right-Click to Erase</div>
 </div>
 
-<div class="fretboard-outer" id="capture-area">
-    <canvas id="drawing-canvas"></canvas>
-    <div id="fretboard" class="fretboard"></div>
+<div class="main-wrapper">
+    <div class="side-guide" id="side-guide"></div>
+    <div class="fretboard-area">
+        <canvas id="drawing-canvas"></canvas>
+        <div id="fretboard" class="fretboard"></div>
+    </div>
 </div>
 
 <div id="piano" class="piano"></div>
@@ -71,21 +82,32 @@
 <script>
 const strings = 6;
 const frets = 25;
-const standardTuning = [4, 11, 7, 2, 9, 4]; // E, B, G, D, A, E (MIDI Note % 12)
+const standardTuning = [4, 11, 7, 2, 9, 4]; // E, B, G, D, A, E
 let currentType = 'R';
 let isDrawingMode = false;
 
-// 初期化
 function init() {
+    createSideGuide();
     createFretboard();
     createPiano();
     setupCanvas();
     setupKeyboard();
 }
 
-// 指板生成
+function createSideGuide() {
+    const guide = document.getElementById('side-guide');
+    for(let i=0; i<strings; i++) {
+        const d = document.createElement('div');
+        d.className = 'side-label';
+        d.innerText = `${6-i}弦`;
+        guide.appendChild(d);
+    }
+}
+
 function createFretboard() {
     const board = document.getElementById('fretboard');
+    const dotFrets = [3, 5, 7, 9, 15, 17, 19, 21];
+
     for (let s = 0; s < strings; s++) {
         const strEl = document.createElement('div');
         strEl.className = 'string';
@@ -93,13 +115,33 @@ function createFretboard() {
             const fretEl = document.createElement('div');
             fretEl.className = 'fret';
             fretEl.dataset.note = (standardTuning[s] + f) % 12;
-            
+
+            // フレット番号 (上部)
+            if (s === 0) {
+                const num = document.createElement('div');
+                num.className = 'fret-num-top';
+                num.innerText = f === 0 ? "Nut" : f;
+                fretEl.appendChild(num);
+            }
+
+            // ポジションマーク
+            if (s === 2 && dotFrets.includes(f)) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                fretEl.appendChild(dot);
+            }
+            if ((f === 12 || f === 24) && (s === 1 || s === 3)) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                fretEl.appendChild(dot);
+            }
+
             fretEl.addEventListener('mousedown', (e) => {
                 if (e.button === 2) { eraseNote(fretEl); return; }
                 if (!isDrawingMode) placeNote(fretEl);
             });
             fretEl.addEventListener('mouseenter', (e) => {
-                if (e.buttons === 2) eraseNote(fretEl); // 右ドラッグ消しゴム
+                if (e.buttons === 2) eraseNote(fretEl);
             });
             strEl.appendChild(fretEl);
         }
@@ -107,9 +149,11 @@ function createFretboard() {
     }
 }
 
-// ノート配置 & オクターブ/ピアノ連動
 function placeNote(el) {
-    el.innerHTML = '';
+    // 既存のノートがあれば削除
+    const existing = el.querySelector('.note');
+    if(existing) existing.remove();
+
     const note = document.createElement('div');
     note.className = `note note-${currentType}`;
     note.innerText = currentType;
@@ -118,21 +162,34 @@ function placeNote(el) {
 }
 
 function eraseNote(el) {
-    el.innerHTML = '';
-    syncTheory(el.dataset.note, false);
+    const n = el.querySelector('.note');
+    if(n) n.remove();
+    // 他に同じ音のノートがなければハイライトを消す判定が必要だが、簡易的に再計算
+    checkHighlights();
+}
+
+function checkHighlights() {
+    const activeNotes = new Set();
+    document.querySelectorAll('.note').forEach(n => {
+        activeNotes.add(n.parentElement.dataset.note);
+    });
+    document.querySelectorAll('.fret').forEach(f => {
+        f.classList.toggle('highlight', activeNotes.has(f.dataset.note));
+    });
+    document.querySelectorAll('.piano-key').forEach(k => {
+        k.classList.toggle('key-active', activeNotes.has(k.dataset.note));
+    });
 }
 
 function syncTheory(midiMod, isActive) {
-    // オクターブハイライト
     document.querySelectorAll('.fret').forEach(f => {
         if (f.dataset.note == midiMod) f.classList.toggle('highlight', isActive);
     });
-    // ピアノ連動
-    const key = document.querySelector(`.piano-key[data-note="${midiMod}"]`);
-    if (key) key.classList.toggle('key-active', isActive);
+    document.querySelectorAll(`.piano-key[data-note="${midiMod}"]`).forEach(k => {
+        k.classList.toggle('key-active', isActive);
+    });
 }
 
-// ピアノ生成
 function createPiano() {
     const piano = document.getElementById('piano');
     const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -147,26 +204,28 @@ function createPiano() {
     }
 }
 
-// キャンバス設定（手書き）
 function setupCanvas() {
     const canvas = document.getElementById('drawing-canvas');
-    const area = document.getElementById('fretboard');
-    canvas.width = area.offsetWidth;
-    canvas.height = area.offsetHeight;
+    const board = document.getElementById('fretboard');
+    // 指板のサイズに合わせてキャンバスを調整
+    setTimeout(() => {
+        canvas.width = board.offsetWidth;
+        canvas.height = board.offsetHeight;
+    }, 500);
+
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    canvas.addEventListener('mousedown', () => drawing = true);
+    canvas.addEventListener('mousedown', (e) => { if(isDrawingMode) drawing = true; });
     canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
     canvas.addEventListener('mousemove', (e) => {
-        if (!drawing || !isDrawingMode) return;
-        ctx.lineWidth = 3; ctx.strokeStyle = 'red'; ctx.lineCap = 'round';
+        if (!drawing) return;
+        ctx.lineWidth = 4; ctx.strokeStyle = '#e74c3c'; ctx.lineCap = 'round';
         ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY);
     });
 }
 
-// キーボードショートカット
 function setupKeyboard() {
     const map = {'1':'R', '3':'3', '5':'5', '7':'7', 't':'T'};
     window.addEventListener('keydown', (e) => {
@@ -180,7 +239,6 @@ function setupKeyboard() {
     });
 }
 
-// パレット操作
 document.getElementById('palette').addEventListener('click', (e) => {
     if (e.target.dataset.type) {
         currentType = e.target.dataset.type;
@@ -188,30 +246,24 @@ document.getElementById('palette').addEventListener('click', (e) => {
         e.target.classList.add('active');
         isDrawingMode = false;
         document.getElementById('drawing-canvas').classList.remove('active');
+        document.getElementById('pencil-mode').classList.remove('active');
     }
 });
 
 document.getElementById('pencil-mode').addEventListener('click', (e) => {
     isDrawingMode = !isDrawingMode;
-    e.target.classList.toggle('active');
-    document.getElementById('drawing-canvas').classList.toggle('active');
-});
-
-// スナップショット (html2canvasの代わりに簡易的にClipboard APIを使用)
-// 本来はライブラリが必要ですが、ここでは「スクショを促す」か、Canvasを合成してコピーするロジックになります。
-document.getElementById('snapshot-btn').addEventListener('click', async () => {
-    alert("「Win+Shift+S」や「Cmd+Shift+4」で選択範囲をコピーしてチャットに貼り付けてください。ブラウザ制限により自動スクショには外部ライブラリが必要です。");
+    e.target.classList.toggle('active', isDrawingMode);
+    document.getElementById('drawing-canvas').classList.toggle('active', isDrawingMode);
 });
 
 function clearAll() {
     document.querySelectorAll('.note').forEach(n => n.remove());
-    document.querySelectorAll('.fret').forEach(f => f.classList.remove('highlight'));
-    document.querySelectorAll('.key-active').forEach(k => k.classList.remove('key-active'));
+    checkHighlights();
     const canvas = document.getElementById('drawing-canvas');
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
-window.oncontextmenu = () => false; // 右クリックメニュー禁止
+window.oncontextmenu = () => false;
 init();
 </script>
 </body>
