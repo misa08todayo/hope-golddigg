@@ -3,181 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ギター指板エディター Pro (Final Fix)</title>
+    <title>Theory Presenter - Guitar & Piano</title>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
-        .controls { margin: 10px 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; width: 95%; max-width: 600px; z-index: 100; }
+        :root { --bg: #f8f9fa; --accent: #3498db; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
         
-        .fretboard-wrapper {
-            display: flex; 
-            overflow-x: auto; 
-            width: 98%;
-            background: #fff;
-            padding: 40px 10px 20px 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+        /* ツールバー */
+        .toolbar { position: sticky; top: 0; background: white; width: 100%; display: flex; justify-content: center; gap: 10px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; flex-wrap: wrap; }
+        .palette { display: flex; gap: 5px; background: #eee; padding: 5px; border-radius: 5px; }
+        .btn { padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background: white; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background: #f0f0f0; }
+        .btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        /* キャンバス（手書きレイヤー） */
+        .fretboard-outer { position: relative; margin: 40px 20px; user-select: none; }
+        #drawing-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
+        #drawing-canvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* --- サイドのフレット番号 --- */
-        .side-fret-numbers {
-            display: flex; flex-direction: column;
-            width: 40px; min-width: 40px;
-            font-size: 11px; font-weight: bold; color: #777;
-            padding-top: 1px; /* 弦の高さ微調整 */
-        }
-        .side-fret { height: 35px; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; }
+        /* 指板 */
+        .fretboard { display: grid; grid-template-rows: repeat(6, 40px); background: #fff; border-right: 2px solid #333; position: relative; min-width: 1540px; }
+        .string { display: flex; border-bottom: 1px solid #ddd; position: relative; }
+        .fret { min-width: 62px; height: 40px; border-left: 2px solid #333; display: flex; align-items: center; justify-content: center; position: relative; }
+        .fret:first-child { border-left-width: 12px; min-width: 50px; background: #f0f0f0; }
+        
+        /* マーク */
+        .note { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 10; position: relative; }
+        .note-R { background: #e74c3c; } .note-3 { background: #f1c40f; color: #333; }
+        .note-5 { background: #3498db; } .note-7 { background: #9b59b6; }
+        .note-T { background: #7f8c8d; } /* Tension/Other */
+        
+        /* オクターブハイライト */
+        .fret.highlight::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.2); z-index: 1; }
 
-        .fretboard {
-            display: grid;
-            grid-template-rows: repeat(6, 35px); 
-            min-width: 1540px;
-            position: relative;
-            border-right: 2px solid #333;
-        }
+        /* ピアノ */
+        .piano { display: flex; margin: 20px; padding-bottom: 50px; }
+        .white-key { width: 40px; height: 150px; border: 1px solid #ccc; background: white; box-sizing: border-box; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-size: 12px; }
+        .black-key { width: 24px; height: 90px; background: #333; margin-left: -12px; margin-right: -12px; z-index: 2; cursor: pointer; }
+        .key-active { background: #3498db !important; color: white; }
 
-        .string { display: flex; border-bottom: 1px solid #999; position: relative; }
-        .string:last-child { border-bottom: none; }
-
-        .fret {
-            min-width: 62px; height: 35px; border-left: 2px solid #333;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; cursor: pointer;
-            box-sizing: border-box;
-        }
-
-        .fret:first-child { border-left-width: 10px; min-width: 50px; background: #eee; }
-
-        /* --- ポジションマーク（弦と弦の間に配置） --- */
-        .dot {
-            position: absolute; width: 14px; height: 14px; background: #dcdcdc; border-radius: 50%;
-            pointer-events: none; z-index: 1; transform: translateY(17.5px); /* 弦の真ん中に移動 */
-        }
-
-        /* --- 上部のフレット番号 --- */
-        .fret-number {
-            position: absolute; top: -30px; font-size: 14px; font-weight: bold;
-            color: #333; width: 100%; text-align: center;
-        }
-
-        .note {
-            width: 28px; height: 28px; display: flex; align-items: center;
-            justify-content: center; font-size: 12px; font-weight: bold;
-            z-index: 10; border: 2px solid transparent; box-sizing: border-box;
-        }
-
-        /* マークの見た目 */
-        .note.type-0 { background: #e74c3c; color: white; border-radius: 50%; }
-        .note.type-1 { background: #3498db; color: white; border-radius: 50%; }
-        .note.type-2 { background: white; color: #333; border: 2px solid #333; border-radius: 50%; }
-        .note.type-3 { background: #2ecc71; color: white; border-radius: 4px; }
-        .note.type-4 { background: #f1c40f; color: #333; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); width: 32px; height: 32px; padding-top: 6px; }
-
-        button { padding: 8px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: #fff; }
-        .hint { font-size: 12px; color: #666; margin-top: 5px; }
+        .hint { font-size: 12px; color: #666; margin: 5px; }
     </style>
 </head>
 <body>
 
-    <h3>🎸 Guitar Fretboard Pro</h3>
-
-    <div class="controls">
-        <button onclick="clearBoard()">全消去</button>
-        <div class="hint">クリック：マーク切替 / 右クリック：文字入力</div>
+<div class="toolbar">
+    <div class="palette" id="palette">
+        <button class="btn active" data-type="R">R</button>
+        <button class="btn" data-type="3">3</button>
+        <button class="btn" data-type="5">5</button>
+        <button class="btn" data-type="7">7</button>
+        <button class="btn" data-type="T">T</button>
+        <button class="btn" id="eraser-mode">Eraser</button>
     </div>
+    <button class="btn" id="pencil-mode">✏️ Pen</button>
+    <button class="btn" id="snapshot-btn">📸 Snapshot</button>
+    <button class="btn" onclick="clearAll()">Clear All</button>
+    <div class="hint">Keys: [1,3,5,7,T] to Switch Palette | Right-Click to Erase</div>
+</div>
 
-    <div class="fretboard-wrapper">
-        <div id="side-frets" class="side-fret-numbers"></div>
-        <div id="fretboard" class="fretboard"></div>
-    </div>
+<div class="fretboard-outer" id="capture-area">
+    <canvas id="drawing-canvas"></canvas>
+    <div id="fretboard" class="fretboard"></div>
+</div>
 
-    <script>
-        const strings = 6;
-        const frets = 25; 
-        const board = document.getElementById('fretboard');
-        const sideFrets = document.getElementById('side-frets');
+<div id="piano" class="piano"></div>
 
-        // サイドフレット番号
-        for (let s = 0; s < strings; s++) {
-            const div = document.createElement('div');
-            div.className = 'side-fret';
-            div.innerText = `${6 - s}弦`;
-            sideFrets.appendChild(div);
+<script>
+const strings = 6;
+const frets = 25;
+const standardTuning = [4, 11, 7, 2, 9, 4]; // E, B, G, D, A, E (MIDI Note % 12)
+let currentType = 'R';
+let isDrawingMode = false;
+
+// 初期化
+function init() {
+    createFretboard();
+    createPiano();
+    setupCanvas();
+    setupKeyboard();
+}
+
+// 指板生成
+function createFretboard() {
+    const board = document.getElementById('fretboard');
+    for (let s = 0; s < strings; s++) {
+        const strEl = document.createElement('div');
+        strEl.className = 'string';
+        for (let f = 0; f < frets; f++) {
+            const fretEl = document.createElement('div');
+            fretEl.className = 'fret';
+            fretEl.dataset.note = (standardTuning[s] + f) % 12;
+            
+            fretEl.addEventListener('mousedown', (e) => {
+                if (e.button === 2) { eraseNote(fretEl); return; }
+                if (!isDrawingMode) placeNote(fretEl);
+            });
+            fretEl.addEventListener('mouseenter', (e) => {
+                if (e.buttons === 2) eraseNote(fretEl); // 右ドラッグ消しゴム
+            });
+            strEl.appendChild(fretEl);
         }
+        board.appendChild(strEl);
+    }
+}
 
-        function createBoard() {
-            for (let s = 0; s < strings; s++) {
-                const stringEl = document.createElement('div');
-                stringEl.className = 'string';
-                
-                for (let f = 0; f < frets; f++) {
-                    const fretEl = document.createElement('div');
-                    fretEl.className = 'fret';
-                    
-                    // 上部のフレット番号（1弦の時だけ表示）
-                    if (s === 0 && f > 0) {
-                        const num = document.createElement('div');
-                        num.className = 'fret-number';
-                        num.innerText = f;
-                        fretEl.appendChild(num);
-                    }
+// ノート配置 & オクターブ/ピアノ連動
+function placeNote(el) {
+    el.innerHTML = '';
+    const note = document.createElement('div');
+    note.className = `note note-${currentType}`;
+    note.innerText = currentType;
+    el.appendChild(note);
+    syncTheory(el.dataset.note, true);
+}
 
-                    // ポジションマーク（特定のフレット・弦の間に配置）
-                    const dotFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-                    // 通常のドット（3弦と4弦の間）
-                    if (s === 2 && dotFrets.includes(f)) {
-                        const dot = document.createElement('div');
-                        dot.className = 'dot';
-                        fretEl.appendChild(dot);
-                    }
-                    // 12Fと24Fのダブルドット（2弦と3弦の間 ＆ 4弦と5弦の間）
-                    if ((f === 12 || f === 24) && (s === 1 || s === 3)) {
-                        const dot = document.createElement('div');
-                        dot.className = 'dot';
-                        fretEl.appendChild(dot);
-                    }
+function eraseNote(el) {
+    el.innerHTML = '';
+    syncTheory(el.dataset.note, false);
+}
 
-                    fretEl.addEventListener('click', () => toggleNote(fretEl));
-                    fretEl.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        const note = fretEl.querySelector('.note');
-                        if (note) {
-                            const label = prompt("文字入力:", note.innerText);
-                            if (label !== null) note.innerText = label;
-                        }
-                    });
+function syncTheory(midiMod, isActive) {
+    // オクターブハイライト
+    document.querySelectorAll('.fret').forEach(f => {
+        if (f.dataset.note == midiMod) f.classList.toggle('highlight', isActive);
+    });
+    // ピアノ連動
+    const key = document.querySelector(`.piano-key[data-note="${midiMod}"]`);
+    if (key) key.classList.toggle('key-active', isActive);
+}
 
-                    stringEl.appendChild(fretEl);
-                }
-                board.appendChild(stringEl);
-            }
+// ピアノ生成
+function createPiano() {
+    const piano = document.getElementById('piano');
+    const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    for (let i = 0; i < 24; i++) {
+        const mod = i % 12;
+        const isBlack = notes[mod].includes('#');
+        const key = document.createElement('div');
+        key.className = isBlack ? 'black-key piano-key' : 'white-key piano-key';
+        key.dataset.note = mod;
+        if (!isBlack) key.innerText = notes[mod];
+        piano.appendChild(key);
+    }
+}
+
+// キャンバス設定（手書き）
+function setupCanvas() {
+    const canvas = document.getElementById('drawing-canvas');
+    const area = document.getElementById('fretboard');
+    canvas.width = area.offsetWidth;
+    canvas.height = area.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    canvas.addEventListener('mousedown', () => drawing = true);
+    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener('mousemove', (e) => {
+        if (!drawing || !isDrawingMode) return;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'red'; ctx.lineCap = 'round';
+        ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY);
+    });
+}
+
+// キーボードショートカット
+function setupKeyboard() {
+    const map = {'1':'R', '3':'3', '5':'5', '7':'7', 't':'T'};
+    window.addEventListener('keydown', (e) => {
+        const type = map[e.key.toLowerCase()];
+        if (type) {
+            currentType = type;
+            document.querySelectorAll('#palette .btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.type === type);
+            });
         }
+    });
+}
 
-        function toggleNote(fretEl) {
-            let note = fretEl.querySelector('.note');
-            if (!note) {
-                note = document.createElement('div');
-                note.className = 'note type-0';
-                note.dataset.type = "0";
-                fretEl.appendChild(note);
-            } else {
-                let type = parseInt(note.dataset.type);
-                if (type < 4) {
-                    type++;
-                    note.className = `note type-${type}`;
-                    note.dataset.type = type;
-                } else {
-                    note.remove();
-                }
-            }
-        }
+// パレット操作
+document.getElementById('palette').addEventListener('click', (e) => {
+    if (e.target.dataset.type) {
+        currentType = e.target.dataset.type;
+        document.querySelectorAll('#palette .btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        isDrawingMode = false;
+        document.getElementById('drawing-canvas').classList.remove('active');
+    }
+});
 
-        function clearBoard() {
-            if (confirm("すべて消去しますか？")) {
-                document.querySelectorAll('.note').forEach(n => n.remove());
-            }
-        }
+document.getElementById('pencil-mode').addEventListener('click', (e) => {
+    isDrawingMode = !isDrawingMode;
+    e.target.classList.toggle('active');
+    document.getElementById('drawing-canvas').classList.toggle('active');
+});
 
-        createBoard();
-    </script>
+// スナップショット (html2canvasの代わりに簡易的にClipboard APIを使用)
+// 本来はライブラリが必要ですが、ここでは「スクショを促す」か、Canvasを合成してコピーするロジックになります。
+document.getElementById('snapshot-btn').addEventListener('click', async () => {
+    alert("「Win+Shift+S」や「Cmd+Shift+4」で選択範囲をコピーしてチャットに貼り付けてください。ブラウザ制限により自動スクショには外部ライブラリが必要です。");
+});
+
+function clearAll() {
+    document.querySelectorAll('.note').forEach(n => n.remove());
+    document.querySelectorAll('.fret').forEach(f => f.classList.remove('highlight'));
+    document.querySelectorAll('.key-active').forEach(k => k.classList.remove('key-active'));
+    const canvas = document.getElementById('drawing-canvas');
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+window.oncontextmenu = () => false; // 右クリックメニュー禁止
+init();
+</script>
 </body>
 </html>
