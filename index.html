@@ -2,71 +2,80 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Theory Presenter - Full Integration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Theory Presenter - Pro Edition</title>
     <style>
         :root { --bg: #f8f9fa; --accent: #3498db; --fret-w: 62px; --str-h: 40px; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; align-items: center; touch-action: manipulation; }
         
         /* ツールバー */
-        .toolbar { position: sticky; top: 0; background: white; width: 100%; display: flex; justify-content: center; gap: 10px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; flex-wrap: wrap; }
-        .palette { display: flex; gap: 5px; background: #eee; padding: 5px; border-radius: 5px; }
-        .btn { padding: 8px 15px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background: white; font-weight: bold; }
+        .toolbar { position: sticky; top: 0; background: white; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+        .palette-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+        .btn { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background: white; font-weight: bold; font-size: 13px; min-width: 40px; }
         .btn.active { background: var(--accent); color: white; border-color: var(--accent); }
         
+        /* 色パレット専用 */
+        .btn-color { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd; padding: 0; }
+        
         /* 全体コンテナ */
-        .main-wrapper { display: flex; margin: 40px 20px; position: relative; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; max-width: 95vw; }
-
-        /* サイドフレット番号 */
-        .side-guide { display: flex; flex-direction: column; width: 40px; margin-top: 40px; }
-        .side-label { height: var(--str-h); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #888; border-bottom: 1px solid transparent; }
-
+        .main-wrapper { display: flex; margin: 20px 10px; position: relative; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow-x: auto; max-width: 98vw; }
+        .side-guide { display: flex; flex-direction: column; width: 35px; margin-top: 40px; }
+        .side-label { height: var(--str-h); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #888; }
         .fretboard-area { position: relative; padding-top: 40px; }
 
-        /* 指板本体 */
+        /* 指板 */
         .fretboard { display: grid; grid-template-rows: repeat(6, var(--str-h)); border-right: 2px solid #333; position: relative; min-width: 1540px; z-index: 5; }
         .string { display: flex; border-bottom: 1px solid #ddd; position: relative; }
-        .string:last-child { border-bottom: none; }
-        .fret { min-width: var(--fret-w); height: var(--str-h); border-left: 2px solid #333; display: flex; align-items: center; justify-content: center; position: relative; box-sizing: border-box; }
+        .fret { min-width: var(--fret-w); height: var(--str-h); border-left: 2px solid #333; display: flex; align-items: center; justify-content: center; position: relative; }
         .fret:first-child { border-left-width: 12px; min-width: 50px; background: #f0f0f0; }
-
-        /* 上部フレット番号 */
-        .fret-num-top { position: absolute; top: -30px; width: 100%; text-align: center; font-weight: bold; color: #555; font-size: 14px; }
-
-        /* ポジションマーク(ドット) */
+        .fret-num-top { position: absolute; top: -30px; width: 100%; text-align: center; font-weight: bold; color: #555; font-size: 13px; }
         .dot { position: absolute; width: 16px; height: 16px; background: #e0e0e0; border-radius: 50%; z-index: 1; pointer-events: none; transform: translateY(20px); }
 
-        /* 手書きキャンバス */
+        /* ノート表示 */
+        .note { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; font-size: 13px; font-weight: bold; z-index: 10; pointer-events: none; }
+        .note-R { background: #e74c3c; } 
+        .note-3 { background: #f1c40f; color: #333; }
+        .note-5 { background: #3498db; } 
+        .note-7 { background: #9b59b6; }
+        .note-9 { background: #2ecc71; }
+        .note-11 { background: #16a085; }
+        .note-13 { background: #d35400; }
+        .note-free-red { background: #ff5e5e; }
+        .note-free-blue { background: #5eb5ff; }
+        .note-free-green { background: #5eff8b; }
+
+        .fret.highlight::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.15); z-index: 2; }
+
+        /* キャンバス */
         #drawing-canvas { position: absolute; top: 40px; left: 0; z-index: 50; pointer-events: none; }
-        #drawing-canvas.active { pointer-events: auto; cursor: crosshair; }
-
-        /* マーク */
-        .note { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; font-size: 14px; font-weight: bold; z-index: 10; }
-        .note-R { background: #e74c3c; } .note-3 { background: #f1c40f; color: #333; }
-        .note-5 { background: #3498db; } .note-7 { background: #9b59b6; }
-        .note-T { background: #7f8c8d; }
-
-        .fret.highlight::after { content: ""; position: absolute; width: 100%; height: 100%; background: rgba(52, 152, 219, 0.2); z-index: 2; }
+        #drawing-canvas.active { pointer-events: auto; }
 
         /* ピアノ */
-        .piano { display: flex; margin: 20px; padding-bottom: 50px; overflow-x: auto; max-width: 95vw; }
-        .white-key { width: 40px; height: 150px; border: 1px solid #ccc; background: white; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-size: 12px; flex-shrink: 0; }
-        .black-key { width: 26px; height: 95px; background: #333; margin-left: -13px; margin-right: -13px; z-index: 2; cursor: pointer; flex-shrink: 0; }
+        .piano { display: flex; margin: 20px; padding-bottom: 30px; overflow-x: auto; width: 95vw; }
+        .white-key { width: 35px; height: 120px; border: 1px solid #ccc; background: white; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; padding-bottom: 5px; }
+        .black-key { width: 22px; height: 75px; background: #333; margin-left: -11px; margin-right: -11px; z-index: 2; flex-shrink: 0; }
         .key-active { background: var(--accent) !important; color: white; }
     </style>
 </head>
 <body>
 
 <div class="toolbar">
-    <div class="palette" id="palette">
+    <div class="palette-row" id="palette-main">
         <button class="btn active" data-type="R">R</button>
         <button class="btn" data-type="3">3</button>
         <button class="btn" data-type="5">5</button>
         <button class="btn" data-type="7">7</button>
-        <button class="btn" data-type="T">T</button>
+        <button class="btn" data-type="9">9</button>
+        <button class="btn" data-type="11">11</button>
+        <button class="btn" data-type="13">13</button>
     </div>
-    <button class="btn" id="pencil-mode">✏️ Pen</button>
-    <button class="btn" onclick="clearAll()">Clear All</button>
+    <div class="palette-row" id="palette-sub">
+        <button class="btn btn-color note-free-red" data-type="free-red" title="Red Marker"></button>
+        <button class="btn btn-color note-free-blue" data-type="free-blue" title="Blue Marker"></button>
+        <button class="btn btn-color note-free-green" data-type="free-green" title="Green Marker"></button>
+        <button class="btn" id="pencil-mode">✏️ Pen</button>
+        <button class="btn" onclick="clearAll()">Clear All</button>
+    </div>
 </div>
 
 <div class="main-wrapper">
@@ -82,7 +91,7 @@
 <script>
 const strings = 6;
 const frets = 25;
-const standardTuning = [4, 11, 7, 2, 9, 4]; // E, B, G, D, A, E
+const standardTuning = [4, 11, 7, 2, 9, 4];
 let currentType = 'R';
 let isDrawingMode = false;
 
@@ -91,7 +100,6 @@ function init() {
     createFretboard();
     createPiano();
     setupCanvas();
-    setupKeyboard();
 }
 
 function createSideGuide() {
@@ -116,7 +124,6 @@ function createFretboard() {
             fretEl.className = 'fret';
             fretEl.dataset.note = (standardTuning[s] + f) % 12;
 
-            // フレット番号 (上部)
             if (s === 0) {
                 const num = document.createElement('div');
                 num.className = 'fret-num-top';
@@ -124,7 +131,6 @@ function createFretboard() {
                 fretEl.appendChild(num);
             }
 
-            // ポジションマーク
             if (s === 2 && dotFrets.includes(f)) {
                 const dot = document.createElement('div');
                 dot.className = 'dot';
@@ -136,13 +142,24 @@ function createFretboard() {
                 fretEl.appendChild(dot);
             }
 
+            // スマホ向けダブルタップ & PC向け右クリック
+            let lastTap = 0;
+            fretEl.addEventListener('touchstart', (e) => {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    e.preventDefault();
+                    eraseNote(fretEl);
+                } else {
+                    if (!isDrawingMode) placeNote(fretEl);
+                }
+                lastTap = now;
+            });
+
             fretEl.addEventListener('mousedown', (e) => {
                 if (e.button === 2) { eraseNote(fretEl); return; }
                 if (!isDrawingMode) placeNote(fretEl);
             });
-            fretEl.addEventListener('mouseenter', (e) => {
-                if (e.buttons === 2) eraseNote(fretEl);
-            });
+
             strEl.appendChild(fretEl);
         }
         board.appendChild(strEl);
@@ -150,27 +167,27 @@ function createFretboard() {
 }
 
 function placeNote(el) {
-    // 既存のノートがあれば削除
     const existing = el.querySelector('.note');
     if(existing) existing.remove();
 
     const note = document.createElement('div');
     note.className = `note note-${currentType}`;
-    note.innerText = currentType;
+    // 度数表示かカラーのみか判定
+    note.innerText = currentType.startsWith('free') ? '' : currentType;
     el.appendChild(note);
-    syncTheory(el.dataset.note, true);
+    checkHighlights();
 }
 
 function eraseNote(el) {
     const n = el.querySelector('.note');
     if(n) n.remove();
-    // 他に同じ音のノートがなければハイライトを消す判定が必要だが、簡易的に再計算
     checkHighlights();
 }
 
 function checkHighlights() {
     const activeNotes = new Set();
     document.querySelectorAll('.note').forEach(n => {
+        // Freeカラー以外をハイライト対象に（必要に応じて変更可）
         activeNotes.add(n.parentElement.dataset.note);
     });
     document.querySelectorAll('.fret').forEach(f => {
@@ -178,15 +195,6 @@ function checkHighlights() {
     });
     document.querySelectorAll('.piano-key').forEach(k => {
         k.classList.toggle('key-active', activeNotes.has(k.dataset.note));
-    });
-}
-
-function syncTheory(midiMod, isActive) {
-    document.querySelectorAll('.fret').forEach(f => {
-        if (f.dataset.note == midiMod) f.classList.toggle('highlight', isActive);
-    });
-    document.querySelectorAll(`.piano-key[data-note="${midiMod}"]`).forEach(k => {
-        k.classList.toggle('key-active', isActive);
     });
 }
 
@@ -199,7 +207,6 @@ function createPiano() {
         const key = document.createElement('div');
         key.className = isBlack ? 'black-key piano-key' : 'white-key piano-key';
         key.dataset.note = mod;
-        if (!isBlack) key.innerText = notes[mod];
         piano.appendChild(key);
     }
 }
@@ -207,7 +214,6 @@ function createPiano() {
 function setupCanvas() {
     const canvas = document.getElementById('drawing-canvas');
     const board = document.getElementById('fretboard');
-    // 指板のサイズに合わせてキャンバスを調整
     setTimeout(() => {
         canvas.width = board.offsetWidth;
         canvas.height = board.offsetHeight;
@@ -216,38 +222,43 @@ function setupCanvas() {
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
-    canvas.addEventListener('mousedown', (e) => { if(isDrawingMode) drawing = true; });
-    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
-    canvas.addEventListener('mousemove', (e) => {
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    };
+
+    const start = (e) => { if(isDrawingMode) { drawing = true; ctx.beginPath(); } };
+    const end = () => { drawing = false; };
+    const move = (e) => {
         if (!drawing) return;
+        const pos = getPos(e);
         ctx.lineWidth = 4; ctx.strokeStyle = '#e74c3c'; ctx.lineCap = 'round';
-        ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY);
-    });
+        ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    };
+
+    canvas.addEventListener('mousedown', start);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('touchstart', start);
+    window.addEventListener('touchend', end);
+    canvas.addEventListener('touchmove', move);
 }
 
-function setupKeyboard() {
-    const map = {'1':'R', '3':'3', '5':'5', '7':'7', 't':'T'};
-    window.addEventListener('keydown', (e) => {
-        const type = map[e.key.toLowerCase()];
+// パレット選択
+document.querySelectorAll('.palette-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+        const type = e.target.dataset.type;
         if (type) {
             currentType = type;
-            document.querySelectorAll('#palette .btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.type === type);
-            });
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            isDrawingMode = false;
+            document.getElementById('drawing-canvas').classList.remove('active');
+            document.getElementById('pencil-mode').classList.remove('active');
         }
     });
-}
-
-document.getElementById('palette').addEventListener('click', (e) => {
-    if (e.target.dataset.type) {
-        currentType = e.target.dataset.type;
-        document.querySelectorAll('#palette .btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        isDrawingMode = false;
-        document.getElementById('drawing-canvas').classList.remove('active');
-        document.getElementById('pencil-mode').classList.remove('active');
-    }
 });
 
 document.getElementById('pencil-mode').addEventListener('click', (e) => {
